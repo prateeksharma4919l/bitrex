@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+enum TxType {
+  BUY
+  SELL
+  DEPOSIT
+  WITHDRAWAL
+  SWAP
+}
+enum TxStatus {
+  REQUESTED
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(USER)
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  profile        UserProfile?
+  sessions       Session[]
+  twoFactor      TwoFactorConfiguration?
+  wallets        Wallet[]
+  transactions   Transaction[]
+  orders         Order[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  ledgerAccounts LedgerAccount[]
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String?
+  currency    String   @default("USD")
+  theme       String   @default("dark")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId, expiresAt])
+}
+
+model TwoFactorConfiguration {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secretEncrypted String
+  enabled         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model Asset {
+  id           String             @id @default(cuid())
+  symbol       String             @unique
+  name         String
+  decimals     Int
+  enabled      Boolean            @default(true)
+  networks     BlockchainNetwork[]
+  balances     Balance[]
+  transactions Transaction[]
+  ledgerAccounts LedgerAccount[]
+}
+
+model BlockchainNetwork {
+  id              String         @id @default(cuid())
+  assetId         String
+  asset           Asset          @relation(fields: [assetId], references: [id])
+  name            String
+  chainId         String
+  enabled         Boolean        @default(false)
+  minDeposit      Decimal?       @db.Decimal(38, 18)
+  minWithdrawal   Decimal?       @db.Decimal(38, 18)
+  fee             Decimal?       @db.Decimal(38, 18)
+  confirmations   Int            @default(0)
+  wallets         Wallet[]
+  addresses       WalletAddress[]
+  transactions    Transaction[]
+  @@unique([assetId, chainId])
+}
+
+model Wallet {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  networkId String
+  network   BlockchainNetwork @relation(fields: [networkId], references: [id])
+  addresses WalletAddress[]
+  balances  Balance[]
+  @@unique([userId, networkId])
+}
+
+model WalletAddress {
+  id         String   @id @default(cuid())
+  walletId   String
+  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  networkId  String
+  network    BlockchainNetwork @relation(fields: [networkId], references: [id])
+  address    String
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  @@unique([networkId, address])
+  @@index([walletId])
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id])
+  available Decimal  @default(0) @db.Decimal(38, 18)
+  pending   Decimal  @default(0) @db.Decimal(38, 18)
+  updatedAt DateTime @updatedAt
+  @@unique([walletId, assetId])
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  type           TxType
+  assetSymbol    String
+  amount         Decimal  @db.Decimal(38, 18)
+  fiatCurrency   String
+  fiatAmount     Decimal  @db.Decimal(38, 18)
+  status         TxStatus @default(REQUESTED)
+  providerRef    String?
+  idempotencyKey String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id])
+  networkId      String?
+  network        BlockchainNetwork? @relation(fields: [networkId], references: [id])
+  type           TxType
+  status         TxStatus @default(REQUESTED)
+  amount         Decimal  @db.Decimal(38, 18)
+  fee            Decimal  @default(0) @db.Decimal(38, 18)
+  txHash         String?
+  simulated      Boolean  @default(true)
+  idempotencyKey String   @unique
+  events         TransactionEvent[]
+  ledgerEntries  LedgerEntry[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([userId, createdAt])
+}
+
+model LedgerAccount {
+  id        String        @id @default(cuid())
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assetId   String
+  asset     Asset         @relation(fields: [assetId], references: [id])
+  label     String
+  kind      String
+  entries   LedgerEntry[]
+  createdAt DateTime      @default(now())
+  @@index([userId, assetId])
+}
+
+model LedgerEntry {
+  id             String        @id @default(cuid())
+  accountId      String
+  account        LedgerAccount @relation(fields: [accountId], references: [id])
+  transactionId  String?
+  transaction    Transaction?  @relation(fields: [transactionId], references: [id])
+  amount         Decimal       @db.Decimal(38, 18)
+  idempotencyKey String        @unique
+  memo           String?
+  createdAt      DateTime      @default(now())
+  @@index([accountId, createdAt])
+  @@index([transactionId])
+}
+
+model TransactionEvent {
+  id              String      @id @default(cuid())
+  transactionId   String
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  eventType       String
+  detail          Json?
+  providerEventId String?     @unique
+  createdAt       DateTime    @default(now())
+  @@index([transactionId, createdAt])
+}
+
+model Provider {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  kind         String
+  enabled      Boolean  @default(false)
+  lastHealthAt DateTime?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  resourceId String?
+  ipAddress  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+}

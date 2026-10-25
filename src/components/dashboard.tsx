@@ -1,15 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
 import {
   Activity,
   ArrowDownLeft,
@@ -35,16 +27,12 @@ import {
   Wallet as WalletIcon,
   X,
 } from "lucide-react";
-import { assets, demoTransactions, portfolioTotal } from "@/lib/assets";
-const data = [
-  { d: "Oct 20", v: 11720 },
-  { d: "Oct 21", v: 12080 },
-  { d: "Oct 22", v: 11840 },
-  { d: "Oct 23", v: 12320 },
-  { d: "Oct 24", v: 12600 },
-  { d: "Oct 25", v: 12180 },
-  { d: "Oct 26", v: 12754 },
-];
+import {
+  assets,
+  portfolioTotal,
+  transactions,
+  type WalletTransaction,
+} from "@/lib/assets";
 const nav = [
   ["Overview", Grid2X2],
   ["My assets", WalletIcon],
@@ -52,6 +40,41 @@ const nav = [
   ["Security", Shield],
 ] as const;
 type Mode = "Buy" | "Sell" | "Send" | "Receive" | "Swap";
+type MarketPrice = {
+  price: string | null;
+  percentChange24h: number | null;
+  updatedAt: string | null;
+  status: "AVAILABLE" | "STALE" | "UNAVAILABLE";
+};
+function formatUsdPrice(value: string) {
+  const price = Number(value);
+  if (!Number.isFinite(price)) return "Unavailable";
+  const digits = price >= 100 ? 2 : price >= 1 ? 4 : 6;
+  return `$${price.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+function formatQuoteTime(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "unavailable";
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatQuoteChange(quote?: MarketPrice) {
+  if (!quote) return "Loading";
+  if (quote.percentChange24h === null) {
+    return quote.status === "STALE" ? "Stale quote" : "Change unavailable";
+  }
+  const sign = quote.percentChange24h > 0 ? "+" : "";
+  const prefix = quote.status === "STALE" ? "Stale snapshot · " : "";
+  return `${prefix}${sign}${quote.percentChange24h.toFixed(2)}% · 24h`;
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const [active, setActive] = useState("Overview"),
@@ -66,7 +89,45 @@ export default function Dashboard() {
     [address, setAddress] = useState(""),
     [review, setReview] = useState(false),
     [busy, setBusy] = useState(false),
-    [recent, setRecent] = useState(demoTransactions);
+    [recent, setRecent] = useState(transactions),
+    [marketPrices, setMarketPrices] = useState<Record<string, MarketPrice>>(
+      {},
+    ),
+    [priceSource, setPriceSource] = useState("CoinPaprika"),
+    [pricesLoaded, setPricesLoaded] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/market/prices", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Prices unavailable");
+        return response.json();
+      })
+      .then((result) => {
+        const quotes = Array.isArray(result.prices) ? result.prices : [];
+        setMarketPrices(
+          Object.fromEntries(
+            quotes.map((quote: MarketPrice & { symbol: string }) => [
+              quote.symbol,
+              quote,
+            ]),
+          ),
+        );
+        if (typeof result.source === "string") setPriceSource(result.source);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setMarketPrices({});
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPricesLoaded(true);
+      });
+    return () => controller.abort();
+  }, []);
+  const availablePriceCount = Object.values(marketPrices).filter(
+    (quote) => quote.status === "AVAILABLE" && quote.price !== null,
+  ).length;
+  const quotedPriceCount = Object.values(marketPrices).filter(
+    (quote) => quote.price !== null,
+  ).length;
   const filtered = useMemo(
     () =>
       assets.filter((a) =>
@@ -302,9 +363,8 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="notice" role="status">
-          <b>DEMO ENVIRONMENT</b> &nbsp;Balances, prices and activity below are
-          illustrative samples. No funds are deposited, withdrawable, or
-          on-chain.
+          <b>DEMO ENVIRONMENT</b> &nbsp;No real wallet is connected. Balances
+          are unavailable; market quotes are indicative only.
         </div>
         {active === "Activity" ? (
           <ActivityView transactions={recent} />
@@ -321,17 +381,17 @@ export default function Dashboard() {
                     <div className="metric-label">
                       Total portfolio value{" "}
                       <span style={{ color: "#657185" }}>
-                        indicative demo value
+                      verified data unavailable
                       </span>
                     </div>
                     <div className="metric-value">
                       {hide
                         ? ""
-                        : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        : portfolioTotal === null
+                          ? "Unavailable"
+                          : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </div>
-                    <div className="trend">
-                      4.28% <span className="muted-line"> this week</span>
-                    </div>
+                    <div className="trend">Performance unavailable</div>
                   </div>
                   <button
                     className="iconbtn"
@@ -341,58 +401,9 @@ export default function Dashboard() {
                     {hide ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
                 </div>
-                <div className="chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={data}
-                      margin={{ top: 10, right: 5, bottom: 0, left: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-                          <stop
-                            offset="0%"
-                            stopColor="#598cff"
-                            stopOpacity={0.29}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#598cff"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        stroke="#28303d"
-                        strokeDasharray="4 5"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="d"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "#748094", fontSize: 10 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#111722",
-                          border: "1px solid #2a3545",
-                          borderRadius: 10,
-                          fontSize: 12,
-                        }}
-                        formatter={(v) => [
-                          `$${Number(v).toLocaleString()}`,
-                          "Demo portfolio",
-                        ]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="v"
-                        stroke="#6998ff"
-                        strokeWidth={2.5}
-                        fill="url(#fill)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div className="chart blank">
+                  Portfolio history will appear when a wallet and verified
+                  activity are connected.
                 </div>
                 <div className="quick-actions">
                   <button
@@ -424,16 +435,16 @@ export default function Dashboard() {
                 <div className="panel">
                   <div className="panel-head">
                     <div className="metric-label">Available balance</div>
-                    <span className="badge">Demo</span>
+                    <span className="badge">Unavailable</span>
                   </div>
                   <div className="metric-value" style={{ fontSize: 24 }}>
                     {hide
                       ? ""
-                      : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      : portfolioTotal === null
+                        ? "Unavailable"
+                        : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </div>
-                  <div className="muted-line">
-                    Illustrative not withdrawable
-                  </div>
+                  <div className="muted-line">No connected wallet</div>
                 </div>
                 <div className="panel">
                   <div className="panel-head">
@@ -441,17 +452,17 @@ export default function Dashboard() {
                     <Activity size={16} color="#8390a4" />
                   </div>
                   <div className="metric-value" style={{ fontSize: 24 }}>
-                    $0.00
+                    Unavailable
                   </div>
-                  <div className="muted-line">No pending demo requests</div>
+                  <div className="muted-line">No transaction service connected</div>
                 </div>
               </div>
             </div>
             <div className="grid metric-grid section">
               <div className="panel">
                 <div className="metric-label">Assets held</div>
-                <div className="metric-value">4</div>
-                <div className="muted-line">Across 4 demo assets</div>
+                <div className="metric-value">6</div>
+                <div className="muted-line">Configured asset types</div>
               </div>
               <div className="panel">
                 <div className="metric-label">Indicative market prices</div>
@@ -462,10 +473,18 @@ export default function Dashboard() {
                     margin: "12px 0 8px",
                   }}
                 >
-                  Unavailable in demo
+                  {!pricesLoaded
+                    ? "Loading prices…"
+                    : availablePriceCount > 0
+                      ? `${availablePriceCount} of ${assets.length} current`
+                      : quotedPriceCount > 0
+                        ? `${quotedPriceCount} stale snapshots`
+                        : "Unavailable"}
                 </div>
                 <div className="muted-line">
-                  No live price provider configured
+                  {pricesLoaded
+                    ? `Source: ${priceSource}`
+                    : "Fetching from market data provider"}
                 </div>
               </div>
               <div className="panel">
@@ -477,7 +496,7 @@ export default function Dashboard() {
                     margin: "12px 0 8px",
                   }}
                 >
-                  Demo account
+                  Infrastructure unavailable
                 </div>
                 <div className="muted-line">No real wallet infrastructure</div>
               </div>
@@ -488,7 +507,7 @@ export default function Dashboard() {
                   <div>
                     <div className="section-title">Your assets</div>
                     <div className="muted-line" style={{ marginTop: 5 }}>
-                      Sample balances informational only
+                      Connect wallet infrastructure to view balances.
                     </div>
                   </div>
                   <button
@@ -525,7 +544,7 @@ export default function Dashboard() {
                 </label>
                 <div className="asset-row muted-line" style={{ paddingTop: 2 }}>
                   <span>ASSET</span>
-                  <span className="right">PRICE*</span>
+                  <span className="right">PRICE</span>
                   <span className="right">BALANCE</span>
                   <span className="right hide-mobile">VALUE</span>
                 </div>
@@ -546,33 +565,49 @@ export default function Dashboard() {
                         <small>{a.symbol}</small>
                       </span>
                     </div>
+                    {(() => {
+                      const quote = marketPrices[a.symbol];
+                      return (
+                        <div className="right">
+                          {quote?.price
+                            ? formatUsdPrice(quote.price)
+                            : quote?.status === "STALE"
+                              ? "Stale quote"
+                              : "Unavailable"}
+                          <div className="muted-line" style={{ marginTop: 3 }}>
+                            {formatQuoteChange(quote)}
+                          </div>
+                          <div className="muted-line" style={{ marginTop: 3 }}>
+                            {quote?.updatedAt
+                              ? `Updated ${formatQuoteTime(quote.updatedAt)}`
+                              : "Updated time unavailable"}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <div className="right">
-                      {a.symbol === "USDT" || a.symbol === "USDC"
-                        ? "$1.00"
-                        : `$${a.price.toLocaleString()}`}
-                      <div
-                        className={a.change < 0 ? "negative" : "positive"}
-                        style={{ fontSize: 10, marginTop: 3 }}
-                      >
-                        {a.change > 0 ? "+" : ""}
-                        {a.change}%
-                      </div>
-                    </div>
-                    <div className="right">
-                      {hide ? "" : a.balance}
+                      {hide ? "" : "Unavailable"}
                       <div className="muted-line" style={{ marginTop: 3 }}>
                         {a.symbol}
                       </div>
                     </div>
                     <div className="right hide-mobile">
-                      {hide
-                        ? ""
-                        : `$${(Number(a.balance.replaceAll(",", "")) * a.price).toLocaleString("en-US", { maximumFractionDigits: 2 })}`}
+                      {hide ? "" : "Unavailable"}
                     </div>
                   </div>
                 ))}
                 <div className="muted-line" style={{ marginTop: 11 }}>
-                  * Sample values only; no price provider configured.
+                  USD quotes are indicative and sourced from {priceSource}; they
+                  are not execution prices. Wallet balances require connected
+                  wallet infrastructure. {" "}
+                  <a
+                    href="https://coinpaprika.com/api"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Market data by CoinPaprika
+                  </a>
+                  .
                 </div>
               </section>
               <section className="panel">
@@ -580,18 +615,27 @@ export default function Dashboard() {
                   <div>
                     <div className="section-title">Recent activity</div>
                     <div className="muted-line" style={{ marginTop: 5 }}>
-                      Simulated demo records only
+                      Simulated requests created in this session
                     </div>
                   </div>
                   <button
                     className="iconbtn"
                     aria-label="Export CSV"
+                    disabled={recent.length === 0}
                     onClick={() => exportCsv(recent)}
                   >
                     <Download size={15} />
                   </button>
                 </div>
-                {recent.slice(0, 4).map((t, i) => (
+                {recent.length === 0 ? (
+                  <div className="blank" style={{ marginTop: 14 }}>
+                    <Activity size={22} />
+                    <div>No activity yet</div>
+                    <div className="muted-line">
+                      New requests will appear here as simulated records.
+                    </div>
+                  </div>
+                ) : recent.slice(0, 4).map((t, i) => (
                   <div className="activity-row" key={`${t.type}-${i}`}>
                     <span
                       className="coin"
@@ -643,7 +687,7 @@ export default function Dashboard() {
           className="muted-line"
           style={{ textAlign: "center", marginTop: 25 }}
         >
-          <Link href="/welcome">About BITREX</Link> · Indicative sample values ·
+          <Link href="/welcome">About BITREX</Link> · Prices unavailable ·
           No live provider connected · <a href="/privacy">Privacy</a> ·{" "}
           <a href="/terms">Terms</a>
         </div>
@@ -880,7 +924,7 @@ export default function Dashboard() {
     </div>
   );
 }
-function exportCsv(transactions: typeof demoTransactions) {
+function exportCsv(transactions: WalletTransaction[]) {
   const rows = [
     ["type", "asset", "amount", "network", "date", "status"],
     ...transactions.map((t) => [
@@ -897,14 +941,14 @@ function exportCsv(transactions: typeof demoTransactions) {
   });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "bitrex-demo-activity.csv";
+  a.download = "bitrex-activity.csv";
   a.click();
   URL.revokeObjectURL(a.href);
 }
 function ActivityView({
   transactions,
 }: {
-  transactions: typeof demoTransactions;
+  transactions: WalletTransaction[];
 }) {
   return (
     <section className="panel">
@@ -912,44 +956,59 @@ function ActivityView({
         <div>
           <div className="section-title">Transaction history</div>
           <p className="muted-line">
-            Sample activity; no blockchain transaction hashes are available.
+          Only requests created in this session are listed here.
           </p>
         </div>
-        <button className="action" onClick={() => exportCsv(transactions)}>
+        <button
+          className="action"
+          disabled={transactions.length === 0}
+          onClick={() => exportCsv(transactions)}
+        >
           <Download size={14} /> Export CSV
         </button>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              {["TYPE", "ASSET", "AMOUNT", "NETWORK", "DATE", "STATUS"].map(
-                (x) => (
+      {transactions.length === 0 ? (
+        <div className="blank">
+          <Activity size={22} />
+          <div>No activity yet</div>
+          <div className="muted-line">
+            New requests will appear here marked as simulated.
+          </div>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="table">
+            <thead>
+              <tr>
+                {[
+                  "TYPE",
+                  "ASSET",
+                  "AMOUNT",
+                  "NETWORK",
+                  "DATE",
+                  "STATUS",
+                ].map((x) => (
                   <th key={x}>{x}</th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((t, i) => (
-              <tr key={i}>
-                <td>{t.type}</td>
-                <td>{t.symbol}</td>
-                <td>{t.amount}</td>
-                <td>{t.network}</td>
-                <td>{t.date}</td>
-                <td>
-                  <span className="badge pending">Simulated</span>
-                </td>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="notice">
-        These rows are sample UI data, not confirmed deposits, withdrawals, or
-        on-chain transactions.
-      </div>
+            </thead>
+            <tbody>
+              {transactions.map((t, i) => (
+                <tr key={i}>
+                  <td>{t.type}</td>
+                  <td>{t.symbol}</td>
+                  <td>{t.amount}</td>
+                  <td>{t.network}</td>
+                  <td>{t.date}</td>
+                  <td>
+                    <span className="badge pending">Simulated</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

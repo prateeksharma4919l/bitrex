@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser, demoMode } from "@/lib/server-auth";
-import { demoTransactions } from "@/lib/assets";
+import { transactions } from "@/lib/assets";
 export async function GET() {
   if (!demoMode()) {
     if (!(await currentUser()))
@@ -12,9 +12,8 @@ export async function GET() {
   }
   return NextResponse.json({
     mode: "DEMO",
-    transactions: demoTransactions.map((t, i) => ({
-      ...t,
-      id: `demo-${i + 1}`,
+    transactions: transactions.map((transaction) => ({
+      ...transaction,
       simulated: true,
       txHash: null,
       status: "SIMULATED",

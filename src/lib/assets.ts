@@ -2,92 +2,79 @@ export const assets = [
   {
     symbol: "BTC",
     name: "Bitcoin",
-    price: 67432.18,
-    change: 2.42,
-    balance: "0.0842",
-    available: "0.0842",
+    providerId: "btc-bitcoin",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["Bitcoin"],
     color: "btc",
   },
   {
     symbol: "ETH",
     name: "Ethereum",
-    price: 3521.64,
-    change: 1.18,
-    balance: "1.245",
-    available: "1.245",
+    providerId: "eth-ethereum",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["Ethereum"],
     color: "eth",
   },
   {
     symbol: "USDT",
     name: "Tether",
-    price: 1,
-    change: 0.01,
-    balance: "2,450.00",
-    available: "2,450.00",
+    providerId: "usdt-tether",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["Ethereum", "Tron"],
     color: "usdt",
   },
   {
     symbol: "SOL",
     name: "Solana",
-    price: 148.23,
-    change: -0.64,
-    balance: "12.8",
-    available: "12.8",
+    providerId: "sol-solana",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["Solana"],
     color: "sol",
   },
   {
     symbol: "USDC",
     name: "USD Coin",
-    price: 1,
-    change: 0.02,
-    balance: "0.00",
-    available: "0.00",
+    providerId: "usdc-usd-coin",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["Ethereum", "Solana"],
     color: "usdt",
   },
   {
     symbol: "BNB",
     name: "BNB",
-    price: 598.42,
-    change: 1.05,
-    balance: "0.00",
-    available: "0.00",
+    providerId: "bnb-binance-coin",
+    price: null,
+    change: null,
+    balance: null,
+    available: null,
     networks: ["BNB Smart Chain"],
     color: "btc",
   },
 ];
-export const demoTransactions = [
-  {
-    type: "Received",
-    symbol: "USDT",
-    amount: "+ 850.00",
-    network: "Tron",
-    date: "Today, 10:42 AM",
-    status: "Demo",
-  },
-  {
-    type: "Sent",
-    symbol: "ETH",
-    amount: "− 0.24",
-    network: "Ethereum",
-    date: "Yesterday, 4:18 PM",
-    status: "Demo",
-  },
-  {
-    type: "Bought",
-    symbol: "BTC",
-    amount: "+ 0.015",
-    network: "Bitcoin",
-    date: "Oct 22, 2026",
-    status: "Demo",
-  },
-];
-export const portfolioTotal = Number(
-  assets
-    .reduce((n, a) => n + Number(a.balance.replaceAll(",", "")) * a.price, 0)
-    .toFixed(2),
-);
+
+export type WalletTransaction = {
+  type: string;
+  symbol: string;
+  amount: string;
+  network: string;
+  date: string;
+  status: string;
+};
+
+export const transactions: WalletTransaction[] = [];
+export const portfolioTotal: number | null = null;

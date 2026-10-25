@@ -12,7 +12,7 @@ const featureCards = [
   {
     icon: Wallet,
     title: "One clear portfolio",
-    body: "See sample balances, asset allocation, and recent activity in one place.",
+    body: "See balances and activity after a verified wallet is connected.",
   },
   {
     icon: Zap,
@@ -22,7 +22,7 @@ const featureCards = [
   {
     icon: Shield,
     title: "Transparent by default",
-    body: "Sample values are labeled. No provider or blockchain confirmation is implied.",
+    body: "Unavailable values stay blank until a price or wallet provider is configured.",
   },
 ];
 const supported = [
@@ -90,10 +90,10 @@ export default function WelcomePage() {
           >
             BITREX brings portfolio views and straightforward transaction flows
             into one polished wallet experience. Explore every screen in demo
-            mode, with sample data clearly identified.
+            mode, with no fabricated balances, activity, or market prices.
           </p>
           <div className="quick-actions" style={{ marginTop: 25 }}>
-            <Link className="action primary" href="/">
+            <Link className="action primary" href="/demo">
               Explore the demo <ArrowRight size={15} />
             </Link>
             <Link className="action" href="/signup">
@@ -146,9 +146,10 @@ export default function WelcomePage() {
               Know what is real
             </h2>
             <p className="muted-line" style={{ lineHeight: 1.75 }}>
-              This environment uses illustrative portfolio values and simulated
-              activity. It has no custody, payment, market-price, or blockchain
-              provider configured. Demo funds cannot be deposited or withdrawn.
+              No wallet balances or past activity are preloaded. Indicative USD
+              market quotes come from CoinPaprika and include source timestamps.
+              This environment has no custody, payment, or blockchain provider;
+              actions are simulated only.
             </p>
             <Link
               href="/terms"
@@ -167,7 +168,7 @@ export default function WelcomePage() {
               [
                 "01",
                 "Open the demo",
-                "Browse sample assets without connecting a wallet.",
+                "Browse indicative market quotes; wallet balances remain unavailable until wallet infrastructure is connected.",
               ],
               [
                 "02",
@@ -196,7 +197,7 @@ export default function WelcomePage() {
           {[
             [
               "Are these live balances or prices?",
-              "No. Dashboard figures are illustrative samples. The market price endpoint reports unavailable until a provider is configured.",
+              "Wallet balances are not preloaded. Indicative USD prices come from CoinPaprika with source timestamps; they are not transaction quotes.",
             ],
             [
               "Can I send or receive real crypto?",

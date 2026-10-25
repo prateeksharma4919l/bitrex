@@ -1,6 +1,12 @@
 # Provider adapter contract and safe rollout
 
-The current product is demo-only. No provider adapters are enabled and no live quotes, custody, card processing, deposits or withdrawals are supported.
+The current product is demo-only. The market page fetches indicative USD tickers from CoinPaprika server-side; it does not use them as transaction quotes. Wallet custody, card processing, deposits and withdrawals are not supported.
+
+## Market data
+
+`GET /api/market/prices` fetches configured asset IDs from `${PRICE_PROVIDER_URL}/tickers/{coin_id}`. The default base is `https://api.coinpaprika.com/v1`; requests time out after five seconds and are cached for ten minutes. Each quote must match its configured provider ID and include a positive USD price and source timestamp. Quotes older than 30 minutes are displayed only as stale quotes with their original timestamps. If a request fails, the last retrieved local snapshot is shown as stale; the UI never labels a snapshot as live.
+
+The dashboard labels prices as indicative, shows the source and provider timestamp, and never uses market data to calculate authoritative balances or execute orders. CoinPaprika's no-key tier is licensed for personal use and requires attribution; get a plan that permits the intended commercial use before redistribution. See [CoinPaprika API](https://coinpaprika.com/api) and [API terms](https://coinpaprika.github.io/files/terms_of_use_v1.pdf).
 
 Recommended server-only adapter interfaces:
 

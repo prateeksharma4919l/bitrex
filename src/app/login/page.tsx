@@ -90,9 +90,13 @@ export default function Login() {
             Create an account
           </Link>
         </div>
-        <div className="notice">
-          Account login requires configured PostgreSQL. Use dashboard demo
-          without an account.
+        <div className="notice" style={{ marginTop: 20 }}>
+          Sign in requires an account and configured PostgreSQL. To preview the
+          wallet without signing in, {" "}
+          <Link href="/demo" style={{ color: "#79a4ff" }}>
+            explore the demo
+          </Link>
+          .
         </div>
       </section>
     </main>

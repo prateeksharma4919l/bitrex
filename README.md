@@ -1,6 +1,6 @@
 # BITREX Crypto Wallet
 
-BITREX is a responsive wallet application starter with a premium dark dashboard and a transparent demo environment. **It is not a live exchange or custody service.** Demo balances, sample activity, asset prices and requests are illustrative and non-withdrawable. No funds are transferred and no sample record is represented as on-chain confirmed.
+BITREX is a responsive wallet application starter with a premium dark dashboard and a transparent demo environment. **It is not a live exchange or custody service.** No balances, transaction history, or market prices are preloaded. Prices and balances remain unavailable until verified providers are configured; demo requests are explicitly simulated and never represented as on-chain activity.
 
 ## Screenshots
 
@@ -11,7 +11,7 @@ Add current screenshots after starting the app:
 
 ## Features
 
-- Responsive portfolio with asset search, allocation snapshots, indicative sample chart, activity and light/dark toggle.
+- Responsive portfolio with asset search, price-source timestamps, empty states for unconfigured balances/history, and light/dark toggle.
 - Product overview at `/welcome` with supported asset examples, getting-started steps, factual demo disclosure, FAQ and account CTAs.
 - Simulated buy, sell, send, swap and receive workflows with prominent demo notices. Receive intentionally shows no deposit address until verified wallet infrastructure exists.
 - CSV export; simulated transaction history; network choices are asset-specific.
@@ -24,7 +24,7 @@ Add current screenshots after starting the app:
 
 Next.js App Router + TypeScript serves the UI and server API. Prisma maps PostgreSQL relations; financial schema fields use `DECIMAL(38,18)`. Use string/decimal arithmetic at all authority boundaries; the tiny fixed point helper is for exact addition/subtraction and must not be replaced with JS floating point for ledgers. Provider integrations should implement server-only adapters and webhook signature verification before enabling live operations.
 
-`APP_MODE=DEMO` is the default. Demo sample prices are explicitly sample display content and the market price API reports unavailable; no market provider is configured. In non-demo mode, the root page and private portfolio/history routes require a valid opaque session and operations return unavailable until provider/ledger execution is implemented. Admin overview enforces `ADMIN` on the server.
+`APP_MODE=DEMO` is the default. The dashboard starts with no balances or history. Indicative USD market prices load server-side from CoinPaprika and include provider update timestamps; prices are cached for 10 minutes and are not transaction quotes. A last-retrieved local price snapshot is shown only with an explicit stale label when outbound API access fails. In non-demo mode, the root page and private portfolio/history routes require a valid opaque session and operations return unavailable until provider/ledger execution is implemented. Admin overview enforces `ADMIN` on the server.
 
 ## Requirements and local setup
 
@@ -38,24 +38,30 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Open http://localhost:3000. The dashboard works with no credentials in demo mode. Configure `DATABASE_URL` to enable auth persistence. Then run:
+Open http://localhost:3000 to reach the login page. Select “explore the demo” (or open http://localhost:3000/demo) to view the empty wallet dashboard and indicative market prices without credentials. Configure `DATABASE_URL` to enable account registration and persistent authentication. Then run:
 
 ```powershell
+Copy-Item .env.example .env
+# Replace REPLACE_WITH_A_LOCAL_ONLY_PASSWORD in both POSTGRES_PASSWORD and DATABASE_URL.
+docker compose up -d postgres
 npm.cmd run db:generate
 npx.cmd prisma migrate dev --name init
-npm.cmd run db:seed
+npm.cmd run dev
 ```
+
+Create your account at http://localhost:3000/signup, then sign in. The database password above is only for local PostgreSQL; choose your wallet account password in the signup form. Docker Desktop must be running before `docker compose up`.
 
 The seed script adds only asset registry entries and creates no users or credentials. Build and start with `npm.cmd run build` and `npm.cmd run start`.
 
 ## Environment
 
-See `.env.example`. `DATABASE_URL` is a PostgreSQL connection string; `APP_MODE` remains `DEMO` unless real services and controls have been reviewed. Price, on-ramp, custody, RPC/indexer, email, and swap provider URLs and keys are server-only placeholders. Never expose them via `NEXT_PUBLIC_*` or commit actual values.
+See `.env.example`. `DATABASE_URL` is a PostgreSQL connection string; `APP_MODE` remains `DEMO` unless real services and controls have been reviewed. `PRICE_PROVIDER_URL` defaults to CoinPaprika's public API; the page shows the source and timestamp. The public data tier is for personal use and requires attribution; obtain a plan that permits your intended commercial use before redistributing quotes. Other provider URLs and keys are server-only placeholders. Never expose them via `NEXT_PUBLIC_*` or commit actual values.
 
 ## API overview
 
 - `POST /api/auth/register`, `/api/auth/login`, `/api/auth/logout`
 - `GET /api/portfolio`, `/api/transactions`
+- `GET /api/market/prices` — indicative CoinPaprika USD tickers, cached for 10 minutes; source timestamp is returned per asset and old/fallback quotes are marked stale.
 - `POST /api/transactions/request` — validates operation, network, decimal string and UUID idempotency key; in demo mode acknowledges as simulated without changing balance.
 - `GET /api/admin/overview` — session authenticated and role checked on server.
 

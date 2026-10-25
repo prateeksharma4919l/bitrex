@@ -2,9 +2,9 @@ import Dashboard from "@/components/dashboard";
 import { currentUser, demoMode } from "@/lib/server-auth";
 import { redirect } from "next/navigation";
 export default async function Home() {
-  if (demoMode()) return <Dashboard />;
   const user = await currentUser();
   if (!user) redirect("/login");
+  if (demoMode()) return <Dashboard />;
   return (
     <main className="main" style={{ margin: "60px auto" }}>
       <div className="brand">

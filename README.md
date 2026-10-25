@@ -1,6 +1,6 @@
 # BITREX Crypto Wallet
 
-BITREX is a responsive wallet application starter with a premium dark dashboard and a transparent demo environment. **It is not a live exchange or custody service.** No balances, transaction history, or market prices are preloaded. Prices and balances remain unavailable until verified providers are configured; demo requests are explicitly simulated and never represented as on-chain activity.
+BITREX is a responsive wallet application starter with a premium dark dashboard and a transparent demo environment. **It is not a live exchange or custody service.** The dashboard includes a clearly marked simulated 5,000,000 USDT preview balance and a single simulated withdrawal entry so the interface can be reviewed. These are not funds, cannot be withdrawn, and are never represented as on-chain activity. Market prices are indicative only.
 
 ## Screenshots
 
@@ -11,7 +11,7 @@ Add current screenshots after starting the app:
 
 ## Features
 
-- Responsive portfolio with asset search, price-source timestamps, empty states for unconfigured balances/history, and light/dark toggle.
+- Responsive portfolio with searchable assets, indicative price-source timestamps, an explicitly simulated demo balance/activity preview, and light/dark toggle.
 - Product overview at `/welcome` with supported asset examples, getting-started steps, factual demo disclosure, FAQ and account CTAs.
 - Simulated buy, sell, send, swap and receive workflows with prominent demo notices. Receive intentionally shows no deposit address until verified wallet infrastructure exists.
 - CSV export; simulated transaction history; network choices are asset-specific.
@@ -24,7 +24,7 @@ Add current screenshots after starting the app:
 
 Next.js App Router + TypeScript serves the UI and server API. Prisma maps PostgreSQL relations; financial schema fields use `DECIMAL(38,18)`. Use string/decimal arithmetic at all authority boundaries; the tiny fixed point helper is for exact addition/subtraction and must not be replaced with JS floating point for ledgers. Provider integrations should implement server-only adapters and webhook signature verification before enabling live operations.
 
-`APP_MODE=DEMO` is the default. The dashboard starts with no balances or history. Indicative USD market prices load server-side from CoinPaprika and include provider update timestamps; prices are cached for 10 minutes and are not transaction quotes. A last-retrieved local price snapshot is shown only with an explicit stale label when outbound API access fails. In non-demo mode, the root page and private portfolio/history routes require a valid opaque session and operations return unavailable until provider/ledger execution is implemented. Admin overview enforces `ADMIN` on the server.
+`APP_MODE=DEMO` is the default. The dashboard preview balance and withdrawal are explicitly marked simulated, and do not update an on-chain or withdrawable balance. Indicative USD market prices load server-side from CoinPaprika and include provider update timestamps; prices are cached for 10 minutes and are not transaction quotes. A last-retrieved local price snapshot is shown only with an explicit stale label when outbound API access fails. In non-demo mode, the root page and private portfolio/history routes require a valid opaque session and operations return unavailable until provider/ledger execution is implemented. Admin overview enforces `ADMIN` on the server.
 
 ## Requirements and local setup
 
@@ -78,9 +78,15 @@ npm.cmd run build
 
 For end-to-end verification, start `npm.cmd run dev` in a second terminal and then run `npm.cmd run test:e2e` (Playwright reuses that server). Install browser binaries with `npx.cmd playwright install chromium`. CI runs lint, typecheck, unit tests, the demo send end-to-end flow, npm advisory audit, and production build. Local `npm audit` could not reach the npm advisory endpoint in this environment.
 
-## Deployment
+## Deploy to Render
 
-Deploy Next.js to Vercel and use managed PostgreSQL with TLS, connection pooling and automated backups. Set environment variables in deployment settings. Apply reviewed migrations in release pipeline. Keep `APP_MODE=DEMO` until providers and operational controls have passed review. Set production HTTPS and secure cookies, configure trusted proxy headers, monitoring, secret rotation and restore tests.
+The repository includes [`render.yaml`](render.yaml), a Render Blueprint for a Node web service and a private PostgreSQL database. It runs Prisma migrations before building, uses the Render-assigned HTTPS URL for origin checks, and keeps `APP_MODE=DEMO` enabled.
+
+1. Push this repository to GitHub.
+2. In Render, select **New → Blueprint**, connect `prateeksharma4919l/bitrex`, and apply the `render.yaml` configuration.
+3. Wait for the Blueprint to create the database and deploy the web service. Open the `bitrex` service's `onrender.com` URL and add `/demo` to view the wallet preview.
+
+This Blueprint uses Render's free plans for a no-cost demo. Free web services spin down when idle, and free PostgreSQL databases expire after 30 days; they are suitable for a preview, not durable account storage. Upgrade the database before relying on signups or saved data. Never use the demo app for customer funds. See [Render's free instance limits](https://render.com/docs/free) and [Next.js deployment guide](https://render.com/docs/deploy-nextjs-app).
 
 ## Provider integration guide
 
@@ -101,14 +107,4 @@ No audit, regulatory status, insurance or production security certification is c
 
 ## GitHub repository
 
-This workspace is prepared for `bitrex-crypto-wallet`. Check account/remotes, then create and push explicitly:
-
-```powershell
-git init
-git add .
-git commit -m "Build BITREX wallet demo application"
-gh repo create bitrex-crypto-wallet --private --source . --remote origin
-git push -u origin main
-```
-
-Review `git status` and `.gitignore` before committing. No GitHub remote or authenticated publishing operation has been performed here.
+The project is published at [prateeksharma4919l/bitrex](https://github.com/prateeksharma4919l/bitrex). Push commits to `main`; Render can deploy new commits automatically after the Blueprint is connected.

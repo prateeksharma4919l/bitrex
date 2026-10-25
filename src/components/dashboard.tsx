@@ -643,8 +643,9 @@ export default function Dashboard() {
           className="muted-line"
           style={{ textAlign: "center", marginTop: 25 }}
         >
-          Indicative sample values No live provider connected{" "}
-          <a href="/privacy">Privacy</a> <a href="/terms">Terms</a>
+          <Link href="/welcome">About BITREX</Link> · Indicative sample values ·
+          No live provider connected · <a href="/privacy">Privacy</a> ·{" "}
+          <a href="/terms">Terms</a>
         </div>
       </main>
       {mode && (

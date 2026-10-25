@@ -12,6 +12,7 @@ Add current screenshots after starting the app:
 ## Features
 
 - Responsive portfolio with asset search, allocation snapshots, indicative sample chart, activity and light/dark toggle.
+- Product overview at `/welcome` with supported asset examples, getting-started steps, factual demo disclosure, FAQ and account CTAs.
 - Simulated buy, sell, send, swap and receive workflows with prominent demo notices. Receive intentionally shows no deposit address until verified wallet infrastructure exists.
 - CSV export; simulated transaction history; network choices are asset-specific.
 - Registration/login API with bcrypt password hashing, random opaque session token stored as SHA-256 hash, HttpOnly SameSite cookie, expiration and audit events (requires PostgreSQL).

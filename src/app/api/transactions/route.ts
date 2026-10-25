@@ -16,7 +16,6 @@ export async function GET() {
       ...transaction,
       simulated: true,
       txHash: null,
-      status: "SIMULATED",
     })),
   });
 }

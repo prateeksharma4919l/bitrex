@@ -5,8 +5,8 @@ export const assets = [
     providerId: "btc-bitcoin",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 0,
+    available: 0,
     networks: ["Bitcoin"],
     color: "btc",
   },
@@ -16,8 +16,8 @@ export const assets = [
     providerId: "eth-ethereum",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 0,
+    available: 0,
     networks: ["Ethereum"],
     color: "eth",
   },
@@ -27,8 +27,8 @@ export const assets = [
     providerId: "usdt-tether",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 5_000_000,
+    available: 5_000_000,
     networks: ["Ethereum", "Tron"],
     color: "usdt",
   },
@@ -38,8 +38,8 @@ export const assets = [
     providerId: "sol-solana",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 0,
+    available: 0,
     networks: ["Solana"],
     color: "sol",
   },
@@ -49,8 +49,8 @@ export const assets = [
     providerId: "usdc-usd-coin",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 0,
+    available: 0,
     networks: ["Ethereum", "Solana"],
     color: "usdt",
   },
@@ -60,8 +60,8 @@ export const assets = [
     providerId: "bnb-binance-coin",
     price: null,
     change: null,
-    balance: null,
-    available: null,
+    balance: 0,
+    available: 0,
     networks: ["BNB Smart Chain"],
     color: "btc",
   },
@@ -76,5 +76,15 @@ export type WalletTransaction = {
   status: string;
 };
 
-export const transactions: WalletTransaction[] = [];
-export const portfolioTotal: number | null = null;
+export const transactions: WalletTransaction[] = [
+  {
+    type: "Withdrawal",
+    symbol: "USDT",
+    amount: "11,829.00",
+    network: "TRON",
+    date: "Demo preview",
+    status: "IN_PROGRESS",
+  },
+];
+// Clearly simulated preview balance. It is not held in a wallet and cannot be withdrawn.
+export const portfolioTotal: number | null = 5_000_000;

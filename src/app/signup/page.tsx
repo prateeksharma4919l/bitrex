@@ -102,8 +102,9 @@ export default function Signup() {
           </Link>
         </div>
         <div className="notice">
-          Do not use real passwords in this demo. Database setup is required to
-          create accounts.
+          New here? Complete this form to create your account. After
+          registration, you will be signed in automatically. Demo balances are
+          for display only and cannot be withdrawn.
         </div>
       </section>
     </main>

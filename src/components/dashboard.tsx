@@ -363,8 +363,8 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="notice" role="status">
-          <b>DEMO ENVIRONMENT</b> &nbsp;No real wallet is connected. Balances
-          are unavailable; market quotes are indicative only.
+          <b>DEMO ENVIRONMENT</b> &nbsp;Preview balance: 5,000,000 USDT. It is
+          simulated and cannot be withdrawn. Market quotes are indicative only.
         </div>
         {active === "Activity" ? (
           <ActivityView transactions={recent} />
@@ -381,7 +381,7 @@ export default function Dashboard() {
                     <div className="metric-label">
                       Total portfolio value{" "}
                       <span style={{ color: "#657185" }}>
-                      verified data unavailable
+                        demo estimate
                       </span>
                     </div>
                     <div className="metric-value">
@@ -391,7 +391,9 @@ export default function Dashboard() {
                           ? "Unavailable"
                           : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     </div>
-                    <div className="trend">Performance unavailable</div>
+                    <div className="trend" style={{ color: "#9aa8bf" }}>
+                      Simulated balance · no wallet history
+                    </div>
                   </div>
                   <button
                     className="iconbtn"
@@ -401,9 +403,29 @@ export default function Dashboard() {
                     {hide ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
                 </div>
-                <div className="chart blank">
-                  Portfolio history will appear when a wallet and verified
-                  activity are connected.
+                <div className="chart portfolio-chart">
+                  <svg
+                    viewBox="0 0 720 180"
+                    role="img"
+                    aria-label="Illustrative flat demo balance chart, not historical wallet performance"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="portfolioFill" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#5489ff" stopOpacity=".25" />
+                        <stop offset="100%" stopColor="#5489ff" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {[35, 75, 115, 155].map((y) => (
+                      <line key={y} x1="0" x2="720" y1={y} y2={y} stroke="#293346" strokeDasharray="4 7" />
+                    ))}
+                    <path d="M0 75 L720 75 L720 180 L0 180 Z" fill="url(#portfolioFill)" />
+                    <path d="M0 75 L720 75" fill="none" stroke="#6d9cff" strokeWidth="3" />
+                  </svg>
+                  <div className="chart-caption">
+                    <span>Illustrative demo balance</span>
+                    <span>No historical wallet data</span>
+                  </div>
                 </div>
                 <div className="quick-actions">
                   <button
@@ -435,7 +457,7 @@ export default function Dashboard() {
                 <div className="panel">
                   <div className="panel-head">
                     <div className="metric-label">Available balance</div>
-                    <span className="badge">Unavailable</span>
+                    <span className="badge">Demo</span>
                   </div>
                   <div className="metric-value" style={{ fontSize: 24 }}>
                     {hide
@@ -444,7 +466,7 @@ export default function Dashboard() {
                         ? "Unavailable"
                         : `$${portfolioTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </div>
-                  <div className="muted-line">No connected wallet</div>
+                  <div className="muted-line">Simulated USDT balance · not withdrawable</div>
                 </div>
                 <div className="panel">
                   <div className="panel-head">
@@ -452,7 +474,7 @@ export default function Dashboard() {
                     <Activity size={16} color="#8390a4" />
                   </div>
                   <div className="metric-value" style={{ fontSize: 24 }}>
-                    Unavailable
+                    $0.00
                   </div>
                   <div className="muted-line">No transaction service connected</div>
                 </div>
@@ -586,20 +608,30 @@ export default function Dashboard() {
                       );
                     })()}
                     <div className="right">
-                      {hide ? "" : "Unavailable"}
+                      {hide
+                        ? ""
+                        : a.balance === null
+                          ? "Unavailable"
+                          : `${a.balance.toLocaleString("en-US", { maximumFractionDigits: 8 })} ${a.symbol}`}
                       <div className="muted-line" style={{ marginTop: 3 }}>
                         {a.symbol}
                       </div>
                     </div>
                     <div className="right hide-mobile">
-                      {hide ? "" : "Unavailable"}
+                      {hide
+                        ? ""
+                        : a.balance !== null && marketPrices[a.symbol]?.price
+                          ? `$${(a.balance * Number(marketPrices[a.symbol].price)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : a.balance === 0
+                            ? "$0.00"
+                            : "Unavailable"}
                     </div>
                   </div>
                 ))}
                 <div className="muted-line" style={{ marginTop: 11 }}>
                   USD quotes are indicative and sourced from {priceSource}; they
-                  are not execution prices. Wallet balances require connected
-                  wallet infrastructure. {" "}
+                  are not execution prices. Preview balances are simulated;
+                  real balances need connected wallet infrastructure. {" "}
                   <a
                     href="https://coinpaprika.com/api"
                     target="_blank"
@@ -665,7 +697,9 @@ export default function Dashboard() {
                         {t.network}
                       </div>
                     </div>
-                    <span className="badge pending hide-mobile">Simulated</span>
+                    <span className="badge pending hide-mobile">
+                      {t.status === "IN_PROGRESS" ? "In process · simulated" : "Simulated"}
+                    </span>
                   </div>
                 ))}
                 <button
@@ -933,7 +967,7 @@ function exportCsv(transactions: WalletTransaction[]) {
       t.amount,
       t.network,
       t.date,
-      "simulated demo",
+      t.status === "IN_PROGRESS" ? "in process (simulated)" : "simulated demo",
     ]),
   ];
   const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], {
@@ -1001,7 +1035,14 @@ function ActivityView({
                   <td>{t.network}</td>
                   <td>{t.date}</td>
                   <td>
-                    <span className="badge pending">Simulated</span>
+                    <span className="badge pending">
+                      {t.status === "IN_PROGRESS" ? "In process" : "Simulated"}
+                    </span>
+                    {t.status === "IN_PROGRESS" && (
+                      <small className="muted-line" style={{ display: "block", marginTop: 4 }}>
+                        Simulated · no on-chain transfer
+                      </small>
+                    )}
                   </td>
                 </tr>
               ))}
